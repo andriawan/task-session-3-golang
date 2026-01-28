@@ -14,7 +14,6 @@ func Load() (*Template, error) {
 	v.SetConfigName("application")
 	v.SetConfigType("yaml")
 	v.AddConfigPath("./config")
-	v.Debug()
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -26,6 +25,10 @@ func Load() (*Template, error) {
 	var template Template
 	if err := v.Unmarshal(&template); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	if template.App.Debug {
+		v.Debug()
 	}
 
 	return &template, nil
