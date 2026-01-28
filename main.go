@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"category-crud/config"
 	_ "category-crud/docs"
 )
 
@@ -18,10 +19,16 @@ import (
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
 func main() {
+	config, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Default().Println(config)
 	store := NewCategoryStore()
 	r := SetupRoutes(store)
 
-	log.Println("Server starting on :8080")
+	port := config.Server.Port
+	log.Println("Server starting on :" + port)
 	log.Println("Swagger documentation available at http://localhost:8080/swagger/index.html")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
