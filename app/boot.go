@@ -3,6 +3,7 @@ package app
 import (
 	"category-crud/config"
 	"category-crud/db"
+	_ "category-crud/docs"
 	"category-crud/handler"
 	"category-crud/repository"
 	"category-crud/route"
@@ -23,6 +24,7 @@ import (
 
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
+// @BasePath /
 
 func Start() {
 	config, err := config.Load()
