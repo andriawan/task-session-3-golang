@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 type CategoryHandler struct {
@@ -17,6 +18,15 @@ func NewCategoryHandler(service *service.CategoryService) *CategoryHandler {
 	return &CategoryHandler{service: service}
 }
 
+// GetAll godoc
+// @Summary Get all categories
+// @Description Retrieve a list of all categories
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.Category
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/categories [get]
 func (h *CategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	products, err := h.service.GetAll()
 	if err != nil {
@@ -37,7 +47,7 @@ func (h *CategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 // @Param category body model.Category true "Category object"
 // @Success 201 {object} model.Category
 // @Failure 400 {string} string "Bad Request"
-// @Router /categories [post]
+// @Router /api/categories [post]
 func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var category model.Category
 	err := json.NewDecoder(r.Body).Decode(&category)
@@ -67,12 +77,12 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.Category
 // @Failure 400 {object} map[string]string "Invalid category ID"
 // @Failure 404 {object} map[string]string "Category not found"
-// @Router /api/category/{id} [get]
+// @Router /api/categories/{id} [get]
 func (h *CategoryHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/category/")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		http.Error(w, "Invalid Category ID", http.StatusBadRequest)
 		return
 	}
 
@@ -97,12 +107,12 @@ func (h *CategoryHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} model.Category
 // @Failure 400 {object} map[string]string "Invalid category ID or request body"
 // @Failure 404 {object} map[string]string "Category not found"
-// @Router /api/category/{id} [put]
+// @Router /api/categories/{id} [put]
 func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/category/")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		http.Error(w, "Invalid Category ID", http.StatusBadRequest)
 		return
 	}
 
@@ -135,10 +145,10 @@ func (h *CategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} map[string]string "Invalid category ID"
 // @Failure 404 {object} map[string]string "Category not found"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Router /api/category/{id} [delete]
+// @Router /api/categories/{id} [delete]
 func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/category/")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid product ID", http.StatusBadRequest)
 		return
@@ -152,6 +162,6 @@ func (h *CategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Product deleted successfully",
+		"message": "Category deleted successfully",
 	})
 }

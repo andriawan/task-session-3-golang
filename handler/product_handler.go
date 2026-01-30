@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 type ProductHandler struct {
@@ -17,6 +18,15 @@ func NewProductHandler(service *service.ProductService) *ProductHandler {
 	return &ProductHandler{service: service}
 }
 
+// GetAll godoc
+// @Summary Get all products
+// @Description Retrieve a list of all products
+// @Tags products
+// @Accept json
+// @Produce json
+// @Success 200 {array} model.Product "List of products"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/products [get]
 func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	products, err := h.service.GetAll()
 	if err != nil {
@@ -24,10 +34,25 @@ func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Return empty array instead of null if no products
+	if products == nil {
+		products = []model.Product{}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(products)
 }
 
+// Create godoc
+// @Summary Create product
+// @Description Create a new product
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param product body model.Product true "Product object"
+// @Success 201 {object} model.Product "Product created successfully"
+// @Failure 400 {object} map[string]string "Invalid request body"
+// @Router /api/products [post]
 func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var product model.Product
 	err := json.NewDecoder(r.Body).Decode(&product)
@@ -47,10 +72,20 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(product)
 }
 
-// GetByID - GET /api/produk/{id}
+// GetByID godoc
+// @Summary Get product by ID
+// @Description Get a single product by its ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} model.Product "Product found"
+// @Failure 400 {object} map[string]string "Invalid product ID"
+// @Failure 404 {object} map[string]string "Product not found"
+// @Router /api/products/{id} [get]
 func (h *ProductHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/produk/")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid product ID", http.StatusBadRequest)
 		return
@@ -66,9 +101,21 @@ func (h *ProductHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(product)
 }
 
+// Update godoc
+// @Summary Update product
+// @Description Update an existing product by ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Param product body model.Product true "Product object"
+// @Success 200 {object} model.Product "Product updated successfully"
+// @Failure 400 {object} map[string]string "Invalid product ID or request body"
+// @Failure 404 {object} map[string]string "Product not found"
+// @Router /api/products/{id} [put]
 func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/produk/")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid product ID", http.StatusBadRequest)
 		return
@@ -92,10 +139,21 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(product)
 }
 
-// Delete - DELETE /api/produk/{id}
+// Delete godoc
+// @Summary Delete product
+// @Description Delete a product by ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} map[string]string "Product deleted successfully"
+// @Failure 400 {object} map[string]string "Invalid product ID"
+// @Failure 404 {object} map[string]string "Product not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/products/{id} [delete]
 func (h *ProductHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/produk/")
-	id, err := strconv.Atoi(idStr)
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		http.Error(w, "Invalid product ID", http.StatusBadRequest)
 		return
