@@ -1,5 +1,5 @@
 definitions:
-  main.Category:
+  model.Category:
     properties:
       description:
         type: string
@@ -9,59 +9,12 @@ definitions:
         type: string
     type: object
 info:
-  contact:
-    email: support@example.com
-    name: API Support
-  description: API for managing categories with CRUD operations
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-  termsOfService: http://swagger.io/terms/
-  title: Category CRUD API
-  version: "1.0"
+  contact: {}
 paths:
-  /categories:
-    get:
-      description: Get a list of all categories
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/main.Category'
-            type: array
-      summary: List all categories
-      tags:
-      - categories
-    post:
+  /api/category/{id}:
+    delete:
       consumes:
       - application/json
-      description: Create a new category with name and description
-      parameters:
-      - description: Category object
-        in: body
-        name: category
-        required: true
-        schema:
-          $ref: '#/definitions/main.Category'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/main.Category'
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-      summary: Create a new category
-      tags:
-      - categories
-  /categories/{id}:
-    delete:
       description: Delete a category by ID
       parameters:
       - description: Category ID
@@ -69,21 +22,39 @@ paths:
         name: id
         required: true
         type: integer
+      produces:
+      - application/json
       responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
+        "200":
+          description: Category deleted successfully
           schema:
-            type: string
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid category ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "404":
           description: Category not found
           schema:
-            type: string
-      summary: Delete a category
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete category
       tags:
       - categories
     get:
+      consumes:
+      - application/json
       description: Get a single category by its ID
       parameters:
       - description: Category ID
@@ -97,16 +68,20 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Category'
+            $ref: '#/definitions/model.Category'
         "400":
-          description: Bad Request
+          description: Invalid category ID
           schema:
-            type: string
+            additionalProperties:
+              type: string
+            type: object
         "404":
           description: Category not found
           schema:
-            type: string
-      summary: Get a category by ID
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get category by ID
       tags:
       - categories
     put:
@@ -124,23 +99,53 @@ paths:
         name: category
         required: true
         schema:
-          $ref: '#/definitions/main.Category'
+          $ref: '#/definitions/model.Category'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Category'
+            $ref: '#/definitions/model.Category'
+        "400":
+          description: Invalid category ID or request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Category not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update category
+      tags:
+      - categories
+  /categories:
+    post:
+      consumes:
+      - application/json
+      description: Create a new category with name and description
+      parameters:
+      - description: Category object
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/model.Category'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Category'
         "400":
           description: Bad Request
           schema:
             type: string
-        "404":
-          description: Category not found
-          schema:
-            type: string
-      summary: Update a category
+      summary: Create a new category
       tags:
       - categories
 swagger: "2.0"
