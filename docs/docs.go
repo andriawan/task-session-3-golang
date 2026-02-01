@@ -308,7 +308,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Product"
+                            "$ref": "#/definitions/dto.ProductCreateRequest"
                         }
                     }
                 ],
@@ -316,7 +316,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Product created successfully",
                         "schema": {
-                            "$ref": "#/definitions/model.Product"
+                            "$ref": "#/definitions/dto.ProductCreateRequest"
                         }
                     },
                     "400": {
@@ -500,6 +500,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.ProductCreateRequest": {
+            "type": "object",
+            "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "stock": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.Category": {
             "type": "object",
             "properties": {
@@ -517,6 +540,12 @@ const docTemplate = `{
         "model.Product": {
             "type": "object",
             "properties": {
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Category"
+                    }
+                },
                 "id": {
                     "type": "integer"
                 },

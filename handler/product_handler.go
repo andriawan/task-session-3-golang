@@ -2,6 +2,7 @@ package handler
 
 import (
 	"category-crud/model"
+	"category-crud/model/dto"
 	"category-crud/service"
 	"encoding/json"
 	"net/http"
@@ -49,19 +50,19 @@ func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 // @Tags products
 // @Accept json
 // @Produce json
-// @Param product body model.Product true "Product object"
-// @Success 201 {object} model.Product "Product created successfully"
+// @Param product body dto.ProductCreateRequest true "Product object"
+// @Success 201 {object} dto.ProductCreateRequest "Product created successfully"
 // @Failure 400 {object} map[string]string "Invalid request body"
 // @Router /api/products [post]
 func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var product model.Product
-	err := json.NewDecoder(r.Body).Decode(&product)
+	var productCreateRequest dto.ProductRequest
+	err := json.NewDecoder(r.Body).Decode(&productCreateRequest)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	err = h.service.Create(&product)
+	err = h.service.Create(&productCreateRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -69,7 +70,7 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(product)
+	json.NewEncoder(w).Encode(productCreateRequest)
 }
 
 // GetByID godoc
@@ -121,7 +122,7 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var product model.Product
+	var product dto.ProductRequest
 	err = json.NewDecoder(r.Body).Decode(&product)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)

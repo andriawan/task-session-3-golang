@@ -1,4 +1,19 @@
 definitions:
+  dto.ProductCreateRequest:
+    properties:
+      categories:
+        items:
+          type: integer
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: integer
+      stock:
+        type: integer
+    type: object
   model.Category:
     properties:
       description:
@@ -10,6 +25,10 @@ definitions:
     type: object
   model.Product:
     properties:
+      categories:
+        items:
+          $ref: '#/definitions/model.Category'
+        type: array
       id:
         type: integer
       name:
@@ -214,14 +233,14 @@ paths:
         name: product
         required: true
         schema:
-          $ref: '#/definitions/model.Product'
+          $ref: '#/definitions/dto.ProductCreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Product created successfully
           schema:
-            $ref: '#/definitions/model.Product'
+            $ref: '#/definitions/dto.ProductCreateRequest'
         "400":
           description: Invalid request body
           schema:
