@@ -5,25 +5,27 @@ import (
 	"category-crud/model/dto"
 	"database/sql"
 	"errors"
-	"fmt"
-	"strings"
 
-	"github.com/lib/pq"
+	"github.com/doug-martin/goqu/v9"
 )
 
 type ProductRepository struct {
-	db *sql.DB
+	db      *sql.DB
+	builder *goqu.Database
 }
 
 func NewProductRepository(db *sql.DB) *ProductRepository {
 	return &ProductRepository{
-		db: db,
+		db:      db,
+		builder: goqu.New("postgres", db),
 	}
 }
 
-func (repo *ProductRepository) GetAll() ([]model.Product, error) {
+func (repo *ProductRepository) GetAll(filter *dto.ProductFilterRequest) ([]model.Product, error) {
 	// Get all products
-	query := "SELECT id, name, price, stock FROM products ORDER BY id"
+	query, _, _ := repo.builder.
+		From("products").
+		Select("id", "name", "price", "stock").ToSQL()
 	rows, err := repo.db.Query(query)
 	if err != nil {
 		return nil, err
@@ -49,15 +51,23 @@ func (repo *ProductRepository) GetAll() ([]model.Product, error) {
 	}
 
 	// Get all categories for these products
-	categoryQuery := `
-		SELECT pc.product_id, c.id, c.name
-		FROM product_categories pc
-		JOIN categories c ON pc.category_id = c.id
-		WHERE pc.product_id = ANY($1)
-		ORDER BY pc.product_id, c.name
-	`
+	categoryQuery, _, err := repo.builder.From(goqu.T("product_categories").As("pc")).
+		Select(
+			goqu.I("pc.product_id"),
+			goqu.I("c.id"),
+			goqu.I("c.name"),
+		).
+		Join(
+			goqu.T("categories").As("c"),
+			goqu.On(goqu.Ex{"pc.category_id": goqu.I("c.id")}),
+		).
+		Where(goqu.I("pc.product_id").In(productIDs)). // productIds is your slice
+		Order(
+			goqu.I("pc.product_id").Asc(),
+			goqu.I("c.name").Asc(),
+		).ToSQL()
 
-	catRows, err := repo.db.Query(categoryQuery, pq.Array(productIDs))
+	catRows, err := repo.db.Query(categoryQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -89,34 +99,53 @@ func (repo *ProductRepository) GetAll() ([]model.Product, error) {
 	return products, nil
 }
 
+func GenerateInsertProductCategoriesQuery(builder *goqu.Database, product *dto.ProductRequest) string {
+	records := make([]goqu.Record, 0, len(product.Categories))
+
+	for _, categoryID := range product.Categories {
+		records = append(records, goqu.Record{
+			"product_id":  product.ID,
+			"category_id": categoryID,
+		})
+	}
+
+	queryCategoryInsert, _, err := builder.Insert("product_categories").Rows(records).ToSQL()
+
+	if err != nil {
+		return ""
+	}
+
+	return queryCategoryInsert
+
+}
+
 func (repo *ProductRepository) Create(product *dto.ProductRequest) error {
 	tx, err := repo.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	query := "INSERT INTO products (name, price, stock) VALUES ($1, $2, $3) RETURNING id"
-	err = tx.QueryRow(query, product.Name, product.Price, product.Stock).Scan(&product.ID)
+	query, _, err := repo.builder.Insert("products").Rows(
+		goqu.Record{
+			"name":  product.Name,
+			"price": product.Price,
+			"stock": product.Stock,
+		},
+	).Returning("id").ToSQL()
+	err = tx.QueryRow(query).Scan(&product.ID)
 	// Batch insert categories
 	if len(product.Categories) > 0 {
-		// Build bulk insert query
-		valueStrings := []string{}
-		valueArgs := []any{}
+		records := make([]goqu.Record, 0, len(product.Categories))
 
-		for i, categoryID := range product.Categories {
-			valueStrings = append(valueStrings, fmt.Sprintf("($1, $%d)", i+2))
-			valueArgs = append(valueArgs, categoryID)
+		for _, categoryID := range product.Categories {
+			records = append(records, goqu.Record{
+				"product_id":  product.ID,
+				"category_id": categoryID,
+			})
 		}
 
-		queryCategoryInsert := fmt.Sprintf(
-			"INSERT INTO product_categories (product_id, category_id) VALUES %s",
-			strings.Join(valueStrings, ","),
-		)
-
-		// Prepend product ID to args
-		valueArgs = append([]any{product.ID}, valueArgs...)
-
-		_, err = tx.Exec(queryCategoryInsert, valueArgs...)
+		queryCategoryInsert := GenerateInsertProductCategoriesQuery(repo.builder, product)
+		_, err = tx.Exec(queryCategoryInsert)
 		if err != nil {
 			return err
 		}
@@ -127,27 +156,34 @@ func (repo *ProductRepository) Create(product *dto.ProductRequest) error {
 
 // GetByID - ambil produk by ID
 func (repo *ProductRepository) GetByID(id int) (*model.Product, error) {
-	query := "SELECT id, name, price, stock FROM products WHERE id = $1"
+	query, _, _ := repo.builder.
+		From("products").
+		Select("id", "name", "price", "stock").
+		Where(goqu.Ex{"id": id}).
+		ToSQL()
 
 	var p model.Product
-	err := repo.db.QueryRow(query, id).Scan(&p.ID, &p.Name, &p.Price, &p.Stock)
+	err := repo.db.QueryRow(query).Scan(&p.ID, &p.Name, &p.Price, &p.Stock)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("produk tidak ditemukan")
 	}
 	if err != nil {
 		return nil, err
 	}
+	categoryQuery, _, err := repo.builder.From(goqu.T("categories").As("c")).
+		Select(
+			goqu.I("c.id"),
+			goqu.I("c.name"),
+		).
+		Join(
+			goqu.T("product_categories").As("pc"),
+			goqu.On(goqu.Ex{"c.id": goqu.I("pc.category_id")}),
+		).
+		Where(goqu.Ex{"pc.product_id": id}).
+		Order(goqu.I("c.name").Asc()).
+		ToSQL()
 
-	// Get categories for this product
-	categoryQuery := `
-		SELECT c.id, c.name
-		FROM categories c
-		JOIN product_categories pc ON c.id = pc.category_id
-		WHERE pc.product_id = $1
-		ORDER BY c.name
-	`
-
-	rows, err := repo.db.Query(categoryQuery, id)
+	rows, err := repo.db.Query(categoryQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -172,8 +208,15 @@ func (repo *ProductRepository) Update(product *dto.ProductRequest) error {
 		return err
 	}
 	defer tx.Rollback()
-	query := "UPDATE products SET name = $1, price = $2, stock = $3 WHERE id = $4"
-	result, err := tx.Exec(query, product.Name, product.Price, product.Stock, product.ID)
+	query, _, err := repo.builder.Update("products").Set(
+		goqu.Record{
+			"name":  product.Name,
+			"price": product.Price,
+			"stock": product.Stock,
+		}).
+		Where(goqu.Ex{"id": product.ID}).ToSQL()
+
+	result, err := tx.Exec(query)
 	if err != nil {
 		return err
 	}
@@ -188,29 +231,20 @@ func (repo *ProductRepository) Update(product *dto.ProductRequest) error {
 	}
 
 	// Delete existing category relationships
-	deleteQuery := "DELETE FROM product_categories WHERE product_id = $1"
-	_, err = tx.Exec(deleteQuery, product.ID)
+	deleteQuery, _, err := repo.builder.
+		Delete("product_categories").
+		Where(goqu.Ex{"product_id": product.ID}).ToSQL()
+
+	_, err = tx.Exec(deleteQuery)
 	if err != nil {
 		return err
 	}
 
 	// Batch insert new categories
 	if len(product.Categories) > 0 {
-		valueStrings := make([]string, 0, len(product.Categories))
-		valueArgs := make([]any, 0, len(product.Categories)+1)
-		valueArgs = append(valueArgs, product.ID)
+		insertQuery := GenerateInsertProductCategoriesQuery(repo.builder, product)
 
-		for i, categoryID := range product.Categories {
-			valueStrings = append(valueStrings, fmt.Sprintf("($1, $%d)", i+2))
-			valueArgs = append(valueArgs, categoryID)
-		}
-
-		insertQuery := fmt.Sprintf(
-			"INSERT INTO product_categories (product_id, category_id) VALUES %s",
-			strings.Join(valueStrings, ","),
-		)
-
-		_, err = tx.Exec(insertQuery, valueArgs...)
+		_, err = tx.Exec(insertQuery)
 		if err != nil {
 			return err
 		}
@@ -220,8 +254,8 @@ func (repo *ProductRepository) Update(product *dto.ProductRequest) error {
 }
 
 func (repo *ProductRepository) Delete(id int) error {
-	query := "DELETE FROM products WHERE id = $1"
-	result, err := repo.db.Exec(query, id)
+	query, _, err := repo.builder.Delete("products").Where(goqu.Ex{"id": id}).ToSQL()
+	result, err := repo.db.Exec(query)
 	if err != nil {
 		return err
 	}
