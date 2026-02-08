@@ -14,36 +14,28 @@ type ProductRepository struct {
 	builder *goqu.Database
 }
 
-func NewProductRepository(db *sql.DB) *ProductRepository {
+func NewProductRepository(db *sql.DB, builder *goqu.Database) *ProductRepository {
 	return &ProductRepository{
 		db:      db,
-		builder: goqu.New("postgres", db),
+		builder: builder,
 	}
 }
 
 func (repo *ProductRepository) GetAll(filter *dto.ProductFilterRequest) ([]model.Product, error) {
 	// Get all products
-	query, _, _ := repo.builder.
+	var products []model.Product
+	err := repo.builder.
 		From("products").
-		Select("id", "name", "price", "stock").ToSQL()
-	rows, err := repo.db.Query(query)
+		Select("id", "name", "price", "stock").
+		ScanStructs(&products)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	products := make([]model.Product, 0)
-	productIDs := make([]int, 0)
+	productIDs := make([]int, len(products))
 
-	for rows.Next() {
-		var p model.Product
-		err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.Stock)
-		if err != nil {
-			return nil, err
-		}
-		p.Categories = []model.Category{} // Initialize empty slice
-		products = append(products, p)
-		productIDs = append(productIDs, p.ID)
+	for _, product := range products {
+		productIDs = append(productIDs, product.ID)
 	}
 
 	if len(productIDs) == 0 {
@@ -71,7 +63,6 @@ func (repo *ProductRepository) GetAll(filter *dto.ProductFilterRequest) ([]model
 	if err != nil {
 		return nil, err
 	}
-	defer catRows.Close()
 
 	// Map categories to products
 	productMap := make(map[int]*model.Product)
@@ -156,21 +147,22 @@ func (repo *ProductRepository) Create(product *dto.ProductRequest) error {
 
 // GetByID - ambil produk by ID
 func (repo *ProductRepository) GetByID(id int) (*model.Product, error) {
-	query, _, _ := repo.builder.
+	var product model.Product
+	result, err := repo.builder.
 		From("products").
 		Select("id", "name", "price", "stock").
 		Where(goqu.Ex{"id": id}).
-		ToSQL()
+		ScanStruct(&product)
 
-	var p model.Product
-	err := repo.db.QueryRow(query).Scan(&p.ID, &p.Name, &p.Price, &p.Stock)
-	if err == sql.ErrNoRows {
+	if !result {
 		return nil, errors.New("produk tidak ditemukan")
 	}
+
 	if err != nil {
 		return nil, err
 	}
-	categoryQuery, _, err := repo.builder.From(goqu.T("categories").As("c")).
+	var categories []model.Category
+	err = repo.builder.From(goqu.T("categories").As("c")).
 		Select(
 			goqu.I("c.id"),
 			goqu.I("c.name"),
@@ -181,25 +173,15 @@ func (repo *ProductRepository) GetByID(id int) (*model.Product, error) {
 		).
 		Where(goqu.Ex{"pc.product_id": id}).
 		Order(goqu.I("c.name").Asc()).
-		ToSQL()
+		ScanStructs(&categories)
 
-	rows, err := repo.db.Query(categoryQuery)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	p.Categories = []model.Category{}
-	for rows.Next() {
-		var cat model.Category
-		err := rows.Scan(&cat.ID, &cat.Name)
-		if err != nil {
-			return nil, err
-		}
-		p.Categories = append(p.Categories, cat)
-	}
+	product.Categories = categories
 
-	return &p, nil
+	return &product, nil
 }
 
 func (repo *ProductRepository) Update(product *dto.ProductRequest) error {
