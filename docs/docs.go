@@ -255,6 +255,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/checkout": {
+            "post": {
+                "description": "Checkout selected products",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transaction"
+                ],
+                "summary": "Checkout products",
+                "parameters": [
+                    {
+                        "description": "Checkout payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CheckoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transaction",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Transaction"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/products": {
             "get": {
                 "description": "Retrieve a list of all products",
@@ -268,6 +314,24 @@ const docTemplate = `{
                     "products"
                 ],
                 "summary": "Get all products",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter products by name (case-insensitive search)",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter products by IDs (comma-separated)",
+                        "name": "ids",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "List of products",
@@ -308,7 +372,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.ProductCreateRequest"
+                            "$ref": "#/definitions/dto.ProductRequest"
                         }
                     }
                 ],
@@ -316,7 +380,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Product created successfully",
                         "schema": {
-                            "$ref": "#/definitions/dto.ProductCreateRequest"
+                            "$ref": "#/definitions/dto.ProductRequest"
                         }
                     },
                     "400": {
@@ -497,10 +561,90 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/report": {
+            "get": {
+                "description": "Report Transaction Based on Date",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transaction"
+                ],
+                "summary": "Report Transaction Based on Date",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "2026-01-01",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "2026-02-01",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Report",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Report"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/report/hari-ini": {
+            "get": {
+                "description": "Report Transaction Today",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transaction"
+                ],
+                "summary": "Report Transaction Today",
+                "responses": {
+                    "200": {
+                        "description": "Report",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Report"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "dto.ProductCreateRequest": {
+        "dto.ProductRequest": {
             "type": "object",
             "properties": {
                 "categories": {
@@ -537,6 +681,28 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CheckoutItem": {
+            "type": "object",
+            "properties": {
+                "product_id": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.CheckoutRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CheckoutItem"
+                    }
+                }
+            }
+        },
         "model.Product": {
             "type": "object",
             "properties": {
@@ -556,6 +722,74 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "stock": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.ProductTerlaris": {
+            "type": "object",
+            "properties": {
+                "nama": {
+                    "type": "string"
+                },
+                "qty_terjual": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Report": {
+            "type": "object",
+            "properties": {
+                "product_terlaris": {
+                    "$ref": "#/definitions/model.ProductTerlaris"
+                },
+                "total_revenue": {
+                    "type": "integer"
+                },
+                "total_transaksi": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Transaction": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TransactionDetail"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "total_amount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.TransactionDetail": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "product_id": {
+                    "type": "integer"
+                },
+                "product_name": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "subtotal": {
+                    "type": "integer"
+                },
+                "transaction_id": {
                     "type": "integer"
                 }
             }
