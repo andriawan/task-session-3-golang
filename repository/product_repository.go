@@ -24,9 +24,13 @@ func NewProductRepository(db *sql.DB, builder *goqu.Database) *ProductRepository
 func (repo *ProductRepository) GetAll(filter *dto.ProductFilterRequest) ([]model.Product, error) {
 	// Get all products
 	var products []model.Product
-	err := repo.builder.
+	queryRaw := repo.builder.
 		From("products").
-		Select("id", "name", "price", "stock").
+		Select("id", "name", "price", "stock")
+	if filter.Name != "" {
+		queryRaw = queryRaw.Where(goqu.I("name").ILike("%" + filter.Name + "%"))
+	}
+	err := queryRaw.
 		ScanStructs(&products)
 	if err != nil {
 		return nil, err

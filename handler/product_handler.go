@@ -25,11 +25,17 @@ func NewProductHandler(service *service.ProductService) *ProductHandler {
 // @Tags products
 // @Accept json
 // @Produce json
+// @Param name query string false "Filter products by name (case-insensitive search)"
 // @Success 200 {array} model.Product "List of products"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/products [get]
 func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	products, err := h.service.GetAll()
+	r.URL.Query().Get("name")
+	filter := dto.ProductFilterRequest{
+		Name: r.URL.Query().Get("name"),
+	}
+
+	products, err := h.service.GetAll(&filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -50,8 +56,8 @@ func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 // @Tags products
 // @Accept json
 // @Produce json
-// @Param product body dto.ProductCreateRequest true "Product object"
-// @Success 201 {object} dto.ProductCreateRequest "Product created successfully"
+// @Param product body dto.ProductRequest true "Product object"
+// @Success 201 {object} dto.ProductRequest "Product created successfully"
 // @Failure 400 {object} map[string]string "Invalid request body"
 // @Router /api/products [post]
 func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
