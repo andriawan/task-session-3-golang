@@ -38,9 +38,11 @@ func Start() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+	productHandler, _, productRepo := setupProduct(db, builder)
 	handlerGroup := &handler.HandlerGroup{
-		Product:  setupProduct(db, builder),
-		Category: setupCategory(db, builder),
+		Product:     productHandler,
+		Category:    setupCategory(db, builder),
+		Transaction: setupTransaction(db, builder, productRepo),
 	}
 	r := route.Configure(handlerGroup)
 
@@ -50,12 +52,12 @@ func Start() {
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
-func setupProduct(db *sql.DB, builder *goqu.Database) *handler.ProductHandler {
+func setupProduct(db *sql.DB, builder *goqu.Database) (*handler.ProductHandler, *service.ProductService, *repository.ProductRepository) {
 	productRepo := repository.NewProductRepository(db, builder)
 	productService := service.NewProductService(productRepo)
 	productHandler := handler.NewProductHandler(productService)
 
-	return productHandler
+	return productHandler, productService, productRepo
 }
 
 func setupCategory(db *sql.DB, builder *goqu.Database) *handler.CategoryHandler {
@@ -64,4 +66,12 @@ func setupCategory(db *sql.DB, builder *goqu.Database) *handler.CategoryHandler 
 	categoryHandler := handler.NewCategoryHandler(categoryService)
 
 	return categoryHandler
+}
+
+func setupTransaction(db *sql.DB, builder *goqu.Database, productRepo *repository.ProductRepository) *handler.TransactionHandler {
+	transactionRepo := repository.NewTransactionRepository(db, builder, productRepo)
+	transactionService := service.NewTransactionService(transactionRepo)
+	transactionHandler := handler.NewTransactionHandler(transactionService)
+
+	return transactionHandler
 }

@@ -11,4 +11,5 @@ type ProductRequest struct {
 type ProductFilterRequest struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
+	IDs  []int  `json:"ids"`
 }

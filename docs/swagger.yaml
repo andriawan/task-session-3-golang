@@ -1,5 +1,5 @@
 definitions:
-  dto.ProductCreateRequest:
+  dto.ProductRequest:
     properties:
       categories:
         items:
@@ -23,6 +23,20 @@ definitions:
       name:
         type: string
     type: object
+  model.CheckoutItem:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  model.CheckoutRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CheckoutItem'
+        type: array
+    type: object
   model.Product:
     properties:
       categories:
@@ -36,6 +50,50 @@ definitions:
       price:
         type: integer
       stock:
+        type: integer
+    type: object
+  model.ProductTerlaris:
+    properties:
+      nama:
+        type: string
+      qty_terjual:
+        type: integer
+    type: object
+  model.Report:
+    properties:
+      product_terlaris:
+        $ref: '#/definitions/model.ProductTerlaris'
+      total_revenue:
+        type: integer
+      total_transaksi:
+        type: integer
+    type: object
+  model.Transaction:
+    properties:
+      created_at:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/model.TransactionDetail'
+        type: array
+      id:
+        type: integer
+      total_amount:
+        type: integer
+    type: object
+  model.TransactionDetail:
+    properties:
+      id:
+        type: integer
+      product_id:
+        type: integer
+      product_name:
+        type: string
+      quantity:
+        type: integer
+      subtotal:
+        type: integer
+      transaction_id:
         type: integer
     type: object
 info:
@@ -200,11 +258,53 @@ paths:
       summary: Update category
       tags:
       - categories
+  /api/checkout:
+    post:
+      consumes:
+      - application/json
+      description: Checkout selected products
+      parameters:
+      - description: Checkout payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Transaction
+          schema:
+            items:
+              $ref: '#/definitions/model.Transaction'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Checkout products
+      tags:
+      - transaction
   /api/products:
     get:
       consumes:
       - application/json
       description: Retrieve a list of all products
+      parameters:
+      - description: Filter products by name (case-insensitive search)
+        in: query
+        name: name
+        type: string
+      - collectionFormat: csv
+        description: Filter products by IDs (comma-separated)
+        in: query
+        items:
+          type: integer
+        name: ids
+        type: array
       produces:
       - application/json
       responses:
@@ -233,14 +333,14 @@ paths:
         name: product
         required: true
         schema:
-          $ref: '#/definitions/dto.ProductCreateRequest'
+          $ref: '#/definitions/dto.ProductRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Product created successfully
           schema:
-            $ref: '#/definitions/dto.ProductCreateRequest'
+            $ref: '#/definitions/dto.ProductRequest'
         "400":
           description: Invalid request body
           schema:
@@ -361,4 +461,57 @@ paths:
       summary: Update product
       tags:
       - products
+  /api/report:
+    get:
+      description: Report Transaction Based on Date
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        example: "2026-01-01"
+        in: query
+        name: start_date
+        type: string
+      - description: End date (YYYY-MM-DD)
+        example: "2026-02-01"
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Report
+          schema:
+            items:
+              $ref: '#/definitions/model.Report'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Report Transaction Based on Date
+      tags:
+      - transaction
+  /api/report/hari-ini:
+    get:
+      description: Report Transaction Today
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Report
+          schema:
+            items:
+              $ref: '#/definitions/model.Report'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Report Transaction Today
+      tags:
+      - transaction
 swagger: "2.0"

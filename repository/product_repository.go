@@ -30,6 +30,11 @@ func (repo *ProductRepository) GetAll(filter *dto.ProductFilterRequest) ([]model
 	if filter.Name != "" {
 		queryRaw = queryRaw.Where(goqu.I("name").ILike("%" + filter.Name + "%"))
 	}
+
+	if len(filter.IDs) > 0 {
+		queryRaw = queryRaw.Where(goqu.I("id").In(filter.IDs))
+	}
+
 	err := queryRaw.
 		ScanStructs(&products)
 	if err != nil {
@@ -237,6 +242,21 @@ func (repo *ProductRepository) Update(product *dto.ProductRequest) error {
 	}
 
 	return tx.Commit()
+}
+
+func (repo *ProductRepository) BatchUpdateStock(products []model.Product) error {
+	updateProductRecords := make([]goqu.Record, 0, len(products))
+	for _, product := range products {
+		updateProductRecords = append(updateProductRecords, goqu.Record{
+			"id":    product.ID,
+			"stock": product.Stock,
+		})
+	}
+	_, err := repo.builder.Update("products").Set(
+		updateProductRecords,
+	).Executor().Exec()
+
+	return err
 }
 
 func (repo *ProductRepository) Delete(id int) error {
