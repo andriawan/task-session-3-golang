@@ -26,6 +26,7 @@ func NewProductHandler(service *service.ProductService) *ProductHandler {
 // @Accept json
 // @Produce json
 // @Param name query string false "Filter products by name (case-insensitive search)"
+// @Param ids query []int false "Filter products by IDs (comma-separated)" collectionFormat(csv)
 // @Success 200 {array} model.Product "List of products"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /api/products [get]

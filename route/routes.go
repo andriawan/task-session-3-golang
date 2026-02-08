@@ -31,6 +31,9 @@ func Configure(handlerGroup *handler.HandlerGroup) *mux.Router {
 	r.HandleFunc("/api/products/{id}", handlerGroup.Product.Update).Methods("PUT")
 	r.HandleFunc("/api/products/{id}", handlerGroup.Product.Delete).Methods("DELETE")
 
+	// Transaction endpoints
+	r.HandleFunc("/api/checkout", handlerGroup.Transaction.Checkout).Methods("POST")
+
 	// Swagger documentation
 	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
