@@ -5,17 +5,19 @@ import (
 	"database/sql"
 	"log"
 
+	"github.com/doug-martin/goqu/v9"
 	_ "github.com/lib/pq"
 )
 
-func Configure(config config.Template) (*sql.DB, error) {
-	db, err := sql.Open("postgres", config.DB.ConnectionString)
+func Configure(config config.Template) (*sql.DB, *goqu.Database, error) {
+	const dialect = "postgres"
+	db, err := sql.Open(dialect, config.DB.ConnectionString)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err := db.Ping(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if config.App.Debug {
@@ -25,6 +27,6 @@ func Configure(config config.Template) (*sql.DB, error) {
 	db.SetMaxOpenConns(config.DB.MaxOpenConns)
 	db.SetMaxIdleConns(config.DB.MaxIdleConns)
 
-	return db, nil
+	return db, goqu.New(dialect, db), nil
 
 }
